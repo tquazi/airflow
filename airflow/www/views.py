@@ -2493,20 +2493,20 @@ class Airflow(AirflowBaseView):
         if not dag:
             msg = f"DAG {dag_id} not found"
             return redirect_or_json(origin, msg, status="error", status_code=404)
+
         if state not in (
             "success",
             "failed",
         ):
             msg = f"Invalid state {state}, must be either 'success' or 'failed'"
             return redirect_or_json(origin, msg, status="error", status_code=400)
+
         latest_execution_date = dag.get_latest_execution_date()
         if not latest_execution_date:
             msg = f"Cannot mark tasks as {state}, seem that dag {dag_id} has never run"
             return redirect_or_json(origin, msg, status="error", status_code=400)
 
-        task_ids: list[Operator | tuple[Operator, int]] = []
-
-        locked_dag_run_ids: list[int] = []
+        tasks: list[Operator | tuple[Operator, int]] = []
 
         if group_id is not None:
             task_group_dict = dag.task_group.get_task_group_dict()
@@ -2515,7 +2515,7 @@ class Airflow(AirflowBaseView):
                 return redirect_or_json(
                     origin, msg=f"TaskGroup {group_id} could not be found", status="error", status_code=404
                 )
-            task_ids = task_ids_or_regex = [task for task in task_group.iter_tasks()]
+            tasks = [task for task in task_group.iter_tasks()]
         elif task_id:
             try:
                 task = dag.get_task(task_id)
@@ -2524,12 +2524,12 @@ class Airflow(AirflowBaseView):
                 return redirect_or_json(origin, msg, status="error", status_code=404)
             task.dag = dag
             if map_indexes is None:
-                task_ids: list[Operator] | list[tuple[Operator, int]] = [task]
+                tasks = [task]
             else:
-                task_ids = [(task, map_index) for map_index in map_indexes]
+                tasks = [(task, map_index) for map_index in map_indexes]
 
         to_be_altered = set_state(
-            tasks=task_ids,
+            tasks=tasks,
             run_id=dag_run_id,
             upstream=upstream,
             downstream=downstream,
