@@ -1839,7 +1839,8 @@ class DAG(LoggingMixin):
         future: bool = False,
         past: bool = False,
         commit: bool = True,
-        session=NEW_SESSION,
+        session: Session = NEW_SESSION,
+        group_id: str | None = None,
     ) -> list[TaskInstance]:
         """
         Set the state of a TaskInstance to the given state, and clear its downstream tasks that are
@@ -1862,17 +1863,49 @@ class DAG(LoggingMixin):
         if not exactly_one(execution_date, run_id):
             raise ValueError("Exactly one of execution_date or run_id must be provided")
 
-        task = self.get_task(task_id)
-        task.dag = self
 
-        tasks_to_set_state: list[Operator | tuple[Operator, int]]
-        if map_indexes is None:
-            tasks_to_set_state = [task]
-        else:
-            tasks_to_set_state = [(task, map_index) for map_index in map_indexes]
+
+        task_ids: list[Operator | tuple[Operator, int]] = []
+        task_ids_or_regex: list[str | tuple[str, int]] = []
+        end_date = execution_date if not future else None
+        start_date = execution_date if not past else None
+
+        locked_dag_run_ids: list[int] = []
+
+        if group_id is not None:
+            print("GroupId ->" + group_id)
+            task_group_dict = self.task_group.get_task_group_dict()
+            task_group = task_group_dict.get(group_id)
+            if task_group is None:
+                raise ValueError("TaskGroup {group_id} could not be found")
+            task_ids = [task for task in task_group.iter_tasks()]
+            task_ids_or_regex = [task.task_id for task in task_group.iter_tasks()]
+            dag_runs_query = session.query(DagRun.id).filter(DagRun.dag_id == self.dag_id).with_for_update()
+            print(dag_runs_query.all())
+            print(DagRun.execution_date)
+            print(start_date)
+            '''
+            if start_date is None and end_date is None:
+                dag_runs_query = dag_runs_query.filter(DagRun.execution_date == start_date)
+            else:
+                if start_date is not None:
+                    dag_runs_query = dag_runs_query.filter(DagRun.execution_date >= start_date)
+
+                if end_date is not None:
+                    dag_runs_query = dag_runs_query.filter(DagRun.execution_date <= end_date)
+            '''
+            locked_dag_run_ids = dag_runs_query.all()
+            print(locked_dag_run_ids)
+        elif task_id:
+            task = self.get_task(task_id)
+            task.dag = self
+            if map_indexes is None:
+                task_ids = [task]
+            else:
+                task_ids = [(task, map_index) for map_index in map_indexes]
 
         altered = set_state(
-            tasks=tasks_to_set_state,
+            tasks=task_ids,
             execution_date=execution_date,
             run_id=run_id,
             upstream=upstream,
@@ -1883,7 +1916,7 @@ class DAG(LoggingMixin):
             commit=commit,
             session=session,
         )
-
+        print("Not commited"+str(commit))
         if not commit:
             return altered
 
@@ -1891,19 +1924,21 @@ class DAG(LoggingMixin):
         # Flush the session so that the tasks marked success are reflected in the db.
         session.flush()
         subdag = self.partial_subset(
-            task_ids_or_regex={task_id},
+            task_ids_or_regex=task_ids,
             include_downstream=True,
             include_upstream=False,
         )
-
+        print("Here - " + run_id + " ** " + self.dag_id)
         if execution_date is None:
             dag_run = (
                 session.query(DagRun).filter(DagRun.run_id == run_id, DagRun.dag_id == self.dag_id).one()
             )  # Raises an error if not found
+            print("Dag Run")
+            print(dag_run)
             resolve_execution_date = dag_run.execution_date
         else:
             resolve_execution_date = execution_date
-
+        #print("Exec date" + resolve_execution_date)
         end_date = resolve_execution_date if not future else None
         start_date = resolve_execution_date if not past else None
 
@@ -1914,6 +1949,7 @@ class DAG(LoggingMixin):
             include_parentdag=True,
             only_failed=True,
             session=session,
+            task_ids=task_ids_or_regex,
             # Exclude the task itself from being cleared
             exclude_task_ids={task_id},
         )
