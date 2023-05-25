@@ -46,6 +46,7 @@ const TaskName = ({
     mr={4}
     width="100%"
     alignItems="center"
+    cursor="pointer"
     fontWeight={isGroup || isMapped ? "bold" : "normal"}
   >
     <Text display="inline" ml={level * 4 + 4} noOfLines={1}>

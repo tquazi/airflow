@@ -21,11 +21,13 @@ import { useSearchParams } from "react-router-dom";
 
 const RUN_ID = "dag_run_id";
 const TASK_ID = "task_id";
+const TASK_GROUP = "task_group";
 const MAP_INDEX = "map_index";
 
 export interface SelectionProps {
   runId?: string | null;
   taskId?: string | null;
+  taskGroup?: string | null;
   mapIndex?: number;
 }
 
@@ -36,11 +38,13 @@ const useSelection = () => {
   const clearSelection = () => {
     searchParams.delete(RUN_ID);
     searchParams.delete(TASK_ID);
+    searchParams.delete(TASK_GROUP);
     searchParams.delete(MAP_INDEX);
     setSearchParams(searchParams);
   };
 
-  const onSelect = ({ runId, taskId, mapIndex }: SelectionProps) => {
+  const onSelect = ({ runId, taskId, taskGroup, mapIndex }: SelectionProps) => {
+    console.log(`World- ${runId} ${taskId}`);
     // Check the window, in case params have changed since this hook was loaded
     const params = new URLSearchParams(window.location.search);
 
@@ -50,14 +54,18 @@ const useSelection = () => {
     if (taskId) params.set(TASK_ID, taskId);
     else params.delete(TASK_ID);
 
+    if (taskGroup) params.set(TASK_GROUP, taskGroup);
+    else params.delete(TASK_GROUP);
+
     if (mapIndex || mapIndex === 0) params.set(MAP_INDEX, mapIndex.toString());
     else params.delete(MAP_INDEX);
-
+    console.log(params);
     setSearchParams(params);
   };
 
   const runId = searchParams.get(RUN_ID);
   const taskId = searchParams.get(TASK_ID);
+  const taskGroup = searchParams.get(TASK_GROUP);
   const mapIndexParam = searchParams.get(MAP_INDEX);
   const mapIndex =
     mapIndexParam !== null ? parseInt(mapIndexParam, 10) : undefined;
@@ -66,6 +74,7 @@ const useSelection = () => {
     selected: {
       runId,
       taskId,
+      taskGroup,
       mapIndex,
     },
     clearSelection,

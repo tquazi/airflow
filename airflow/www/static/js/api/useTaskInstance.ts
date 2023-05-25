@@ -35,7 +35,7 @@ const convertTaskInstance = (ti: API.TaskInstance) =>
 const taskInstanceApi = getMetaValue("task_instance_api");
 
 interface Props
-  extends SetOptional<API.GetMappedTaskInstanceVariables, "mapIndex"> {
+  extends SetOptional<API.GetMappedTaskInstanceVariables, "limit", "mapIndex"> {
   enabled: boolean;
 }
 
@@ -43,18 +43,25 @@ const useTaskInstance = ({
   dagId,
   dagRunId,
   taskId,
+  limit,
   mapIndex,
   enabled,
 }: Props) => {
   let url: string = "";
   if (taskInstanceApi) {
-    url = taskInstanceApi
-      .replace("_DAG_RUN_ID_", dagRunId)
-      .replace("_TASK_ID_", taskId || "");
+    url = taskInstanceApi.replace("_DAG_RUN_ID_", dagRunId);
+    if (taskId) {
+      url = url.replace("_TASK_ID_", taskId);
+    } else {
+      url = url.replace("/_TASK_ID_", "");
+    }
   }
 
   if (mapIndex !== undefined && mapIndex >= 0) {
     url += `/${mapIndex.toString()}`;
+  }
+  if (limit) {
+    url += `?limit=${limit}`;
   }
 
   const { isRefreshOn } = useAutoRefresh();
