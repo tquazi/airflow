@@ -77,6 +77,9 @@ const ReactECharts = ({
     if (ref.current !== null) {
       const chartInstance = getInstanceByDom(ref.current);
       if (chartInstance) {
+      console.log("WWW")
+      console.log(option);
+    console.log(settings)
         chartInstance.setOption(option, settings);
       }
     }

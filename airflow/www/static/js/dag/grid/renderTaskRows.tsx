@@ -134,8 +134,19 @@ const Row = (props: RowProps) => {
         newGroupIds = openGroupIds.filter((g) => g !== task.label);
       }
       onToggleGroups(newGroupIds);
+      onSelect({ taskId: task.id });
+    } else if (!isGroup && task.label) {
+      onSelect({ taskId: task.id });
     }
-  }, [isGroup, isOpen, task.label, openGroupIds, onToggleGroups]);
+  }, [
+    isGroup,
+    isOpen,
+    task.label,
+    openGroupIds,
+    onToggleGroups,
+    onSelect,
+    task.id,
+  ]);
 
   // check if the group's parents are all open, if not, return null
   if (level !== openParentCount) return null;

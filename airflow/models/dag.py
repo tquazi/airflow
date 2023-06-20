@@ -1527,6 +1527,8 @@ class DAG(LoggingMixin):
         self,
         base_date: datetime,
         num: int,
+        run_type: str | None = None,
+        run_state: str | None = None,
         *,
         session: Session = NEW_SESSION,
     ) -> list[TaskInstance]:
@@ -1536,13 +1538,18 @@ class DAG(LoggingMixin):
         corresponding to any DagRunType. It can have less if there are
         less than ``num`` scheduled DAG runs before ``base_date``.
         """
-        execution_dates: list[Any] = (
-            session.query(DagRun.execution_date)
-            .filter(
-                DagRun.dag_id == self.dag_id,
-                DagRun.execution_date <= base_date,
-            )
-            .order_by(DagRun.execution_date.desc())
+        query = session.query(DagRun.execution_date).filter(
+            DagRun.dag_id == self.dag_id,
+            DagRun.execution_date <= base_date,
+        )
+        if run_type is not None:
+            query = query.filter(DagRun.run_type == run_type)
+
+        if run_state is not None:
+            query = query.filter(DagRun.state == run_state)
+
+        execution_dates = (
+            query.order_by(DagRun.execution_date.desc())
             .limit(num)
             .all()
         )

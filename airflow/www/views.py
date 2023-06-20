@@ -3813,6 +3813,59 @@ class Airflow(AirflowBaseView):
             {"Content-Type": "application/json; charset=utf-8"},
         )
 
+    @expose("/object/duration_data")
+    @auth.has_access(
+        [
+            (permissions.ACTION_CAN_READ, permissions.RESOURCE_DAG),
+            (permissions.ACTION_CAN_READ, permissions.RESOURCE_TASK_INSTANCE),
+        ]
+    )
+    def duration_data(self):
+        """Returns task duration data."""
+        dag_id = request.args.get("dag_id")
+        dag = get_airflow_app().dag_bag.get_dag(dag_id)
+
+        if not dag:
+            return {"error": f"can't find dag {dag_id}"}, 404
+
+        root = request.args.get("root")
+        if root:
+            filter_upstream = request.args.get("filter_upstream") == "true"
+            filter_downstream = request.args.get("filter_downstream") == "true"
+            dag = dag.partial_subset(
+                task_ids_or_regex=root, include_upstream=filter_upstream, include_downstream=filter_downstream
+            )
+
+        num_runs = request.args.get("num_runs", type=int)
+        if num_runs is None:
+            num_runs = conf.getint("webserver", "default_dag_run_display_number")
+
+        run_type = request.args.get("run_type", type=str)
+        run_state = request.args.get("run_state", type=str)
+
+        try:
+            base_date = timezone.parse(request.args["base_date"])
+        except (KeyError, ValueError):
+            base_date = dag.get_latest_execution_date() or timezone.utcnow()
+
+        with create_session() as session:
+            task_instances = dag.get_task_instances_before(base_date, num_runs, run_type, run_state, session=session)
+
+            for ti in task_instances:
+                print(ti)
+
+            encoded_task_instances = [
+                wwwutils.encode_task_instance(ti, json_encoder=utils_json.WebEncoder) for ti in task_instances
+            ]
+            data = {
+                "task_instances": encoded_task_instances,
+            }
+        # avoid spaces to reduce payload size
+        return (
+            htmlsafe_json_dumps(data, separators=(",", ":"), dumps=flask.json.dumps),
+            {"Content-Type": "application/json; charset=utf-8"},
+        )
+
     @expose("/object/historical_metrics_data")
     @auth.has_access(
         [

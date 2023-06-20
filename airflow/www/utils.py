@@ -175,6 +175,25 @@ def encode_dag_run(
     }
 
 
+def encode_task_instance(
+    task_instance: TaskInstance | None, *, json_encoder: type[json.JSONEncoder] = json.JSONEncoder
+) -> dict[str, Any] | None:
+    if not task_instance:
+        return None
+
+    return {
+        "dag_id": task_instance.dag_id,
+        "task_id": task_instance.task_id,
+        "run_id": task_instance.run_id,
+        "map_index": task_instance.map_index,
+        "run_start_date": datetime_to_string(task_instance.start_date),
+        "run_end_date": datetime_to_string(task_instance.end_date),
+        "run_duration": task_instance.duration,
+        "state": task_instance.state,
+        "job_id": task_instance.job_id,
+        "execution_date": task_instance.execution_date,
+    }
+
 def check_import_errors(fileloc, session):
     # Check dag import errors
     import_errors = session.query(errors.ImportError).filter(errors.ImportError.filename == fileloc).all()

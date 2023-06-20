@@ -17,7 +17,7 @@
  * under the License.
  */
 
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect } from "react";
 import {
   Flex,
   Divider,
@@ -33,7 +33,13 @@ import { useSearchParams } from "react-router-dom";
 import useSelection from "src/dag/useSelection";
 import { getTask, getMetaValue } from "src/utils";
 import { useGridData, useTaskInstance } from "src/api";
-import { MdDetails, MdAccountTree, MdReorder, MdCode } from "react-icons/md";
+import {
+  MdDetails,
+  MdAccountTree,
+  MdReorder,
+  MdCode,
+  MdHourglassBottom,
+} from "react-icons/md";
 import { BiBracket } from "react-icons/bi";
 import URLSearchParamsWrapper from "src/utils/URLSearchParamWrapper";
 
@@ -43,6 +49,7 @@ import DagRunContent from "./dagRun";
 import DagContent from "./Dag";
 import Graph from "./graph";
 import DagCode from "./dagCode";
+import TaskDuration from "./taskDuration";
 import MappedInstances from "./taskInstance/MappedInstances";
 import Logs from "./taskInstance/Logs";
 import BackToTaskSummary from "./taskInstance/BackToTaskSummary";
@@ -64,10 +71,12 @@ const tabToIndex = (tab?: string) => {
   switch (tab) {
     case "graph":
       return 1;
+    case "task_duration":
+      return 2;
     case "code":
     case "logs":
     case "mapped_tasks":
-      return 2;
+      return 3;
     case "details":
     default:
       return 0;
@@ -84,6 +93,8 @@ const indexToTab = (
     case 1:
       return "graph";
     case 2:
+      return "task_duration";
+    case 3:
       if (!taskId) return "code";
       if (showMappedTasks) return "mapped_tasks";
       if (showLogs) return "logs";
@@ -212,6 +223,12 @@ const Details = ({ openGroupIds, onToggleGroups, hoveredTaskState }: Props) => {
               Graph
             </Text>
           </Tab>
+          <Tab>
+            <MdHourglassBottom size={16} />
+            <Text as="strong" ml={1}>
+              Task Duration
+            </Text>
+          </Tab>
           {showDagCode && (
             <Tab>
               <MdCode size={16} />
@@ -261,6 +278,9 @@ const Details = ({ openGroupIds, onToggleGroups, hoveredTaskState }: Props) => {
               onToggleGroups={onToggleGroups}
               hoveredTaskState={hoveredTaskState}
             />
+          </TabPanel>
+          <TabPanel height="100%">
+            <TaskDuration runId={runId} taskId={taskId} />
           </TabPanel>
           {showDagCode && (
             <TabPanel height="100%">
